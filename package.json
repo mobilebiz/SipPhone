@@ -1,16 +1,17 @@
 {
   "name": "SipPhone",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "twilio-run --env"
+    "start": "twilio-run --env",
+    "deploy": "npm version patch --force && twilio serverless:deploy -p gij.com --runtime node12"
   },
   "devDependencies": {
     "twilio-run": "^2.0.0"
   },
   "engines": {
-    "node": "8.10.0"
+    "node": "12.x"
   },
   "dependencies": {
     "@kintone/rest-api-client": "^1.7.2"
