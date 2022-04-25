@@ -6,13 +6,13 @@
  * @param {Object} event
  * @param {Function} callback
  */
-const { KintoneRestAPIClient } = require("@kintone/rest-api-client");
+const { KintoneRestAPIClient } = require('@kintone/rest-api-client');
 let addressClient, historyClient, addressAppId, historyAppId;
 exports.handler = function (context, event, callback) {
-  const from = event.From.replace("+81", "0"); // E.164 -> 0AB〜J
+  const from = event.From.replace('+81', '0'); // E.164 -> 0AB〜J
 
   let fDeny = false; // 着信拒否フラグ
-  let fromName = ""; // 電話帳に登録されている着信名
+  let fromName = ''; // 電話帳に登録されている着信名
 
   // kintoneRestAPIClient
   const kintoneUrl = `https://${context.KINTONE_DOMAIN}.cybozu.com`;
@@ -35,25 +35,28 @@ exports.handler = function (context, event, callback) {
   addressClient.record
     .getRecords({
       app: addressAppId,
-      fields: ["number", "fromName", "deny"],
+      fields: ['number', 'fromName', 'deny'],
       query: `number = "${from}"`,
       totalCount: true,
     })
     .then((resp) => {
-      if (resp.totalCount === "0") {
+      if (resp.totalCount === '0') {
         // 連絡帳にデータがない
+        fromName = from;
         return addAddress(from);
       } else {
         console.dir(resp.records[0]);
         // 着信拒否のチェック
         if (
-          resp.records[0].deny.value.filter((v) => v === "拒否する").length ===
+          resp.records[0].deny.value.filter((v) => v === '拒否する').length ===
           1
         )
           fDeny = true; // 着信拒否設定がされている
         // 着信名の確認
         fromName =
-          resp.records[0].fromName.value || resp.records[0].number.value;
+          resp.records[0].fromName.value !== ''
+            ? resp.records[0].fromName.value
+            : from;
         return true;
       }
     })
@@ -63,7 +66,7 @@ exports.handler = function (context, event, callback) {
     })
     .then(() => {
       // TwiMLを返却する
-      const VoiceResponse = require("twilio").twiml.VoiceResponse;
+      const VoiceResponse = require('twilio').twiml.VoiceResponse;
       const response = new VoiceResponse();
       if (fDeny) {
         // 着信拒否
@@ -72,10 +75,10 @@ exports.handler = function (context, event, callback) {
       `;
         const say = response.say(
           {
-            language: "ja-JP",
-            voice: "Polly.Mizuki",
+            language: 'ja-JP',
+            voice: 'Polly.Mizuki',
           },
-          message
+          message,
         );
         response.hangup();
       } else {
@@ -84,11 +87,12 @@ exports.handler = function (context, event, callback) {
           callerId: fromName,
           answerOnBridge: true,
           hangupOnStar: true,
+          record: 'record-from-answer-dual',
         });
         dial.sip(`sip:2001@${context.SIP_DOMAIN}.sip.twilio.com`);
         dial.sip(`sip:2002@${context.SIP_DOMAIN}.sip.twilio.com`);
         dial.sip(`sip:2003@${context.SIP_DOMAIN}.sip.twilio.com`);
-        response.redirect("./redirect");
+        response.redirect('./redirect');
       }
       callback(null, response);
     })
